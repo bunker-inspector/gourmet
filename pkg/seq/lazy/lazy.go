@@ -1,12 +1,13 @@
 package lazy
 
-func LazySeq(o ...interface{}) chan interface{} {
+func Seq(o ...interface{}) chan interface{} {
 	c := make(chan interface{})
 	go func(){
 		for _, v := range(o) {
 			c <- v
 		}
 		c <- nil
+		close(c)
 	}()
 	return c
 }
@@ -60,6 +61,7 @@ func Zip(os ...<-chan interface{}) chan interface{} {
 				}
 			}
 		}
+		c <- nil
 	}()
 	return c
 }
