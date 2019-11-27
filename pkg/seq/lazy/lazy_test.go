@@ -1,4 +1,4 @@
-package seq
+package lazy
 
 import (
 	//"fmt"

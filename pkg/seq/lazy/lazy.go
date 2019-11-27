@@ -1,4 +1,4 @@
-package seq
+package lazy
 
 func LazySeq(o ...interface{}) chan interface{} {
 	c := make(chan interface{})
@@ -100,8 +100,6 @@ func Take(n int, seq <-chan interface{}) chan interface{} {
 		c <- nil
 	}()
 	return c
-
-
 }
 
 func TakeWhile(seq <-chan interface{}, pred func(interface{}) bool) chan interface{} {
