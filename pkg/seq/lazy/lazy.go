@@ -7,12 +7,11 @@ func Seq(o ...interface{}) chan interface{} {
 			c <- v
 		}
 		c <- nil
-		close(c)
 	}()
 	return c
 }
 
-func Map(fn func(interface{})interface{}, seq <-chan interface{}) chan interface{} {
+func Map(fn func(interface{})interface{}, seq chan interface{}) chan interface{} {
 	c := make(chan interface{})
 	go func(){
 		v := <-seq
@@ -21,11 +20,12 @@ func Map(fn func(interface{})interface{}, seq <-chan interface{}) chan interface
 			v = <-seq
 		}
 		c <- nil
+		close(seq)
 	}()
 	return c
 }
 
-func Filter(pred func(interface{})bool, seq <-chan interface{}) chan interface{} {
+func Filter(pred func(interface{})bool, seq chan interface{}) chan interface{} {
 	c := make(chan interface{})
 	go func(){
 		v := <-seq
@@ -36,6 +36,7 @@ func Filter(pred func(interface{})bool, seq <-chan interface{}) chan interface{}
 			v = <-seq
 		}
 		c <- nil
+		close(seq)
 	}()
 	return c
 }
@@ -44,20 +45,22 @@ func Reverse(o <-chan interface{}) {
 	panic("Oh god oh god oh shit oh god")
 }
 
-func Zip(os ...<-chan interface{}) chan interface{} {
+func Zip(os ...chan interface{}) chan interface{} {
 	c := make(chan interface{})
 	go func() {
-		for len(os) > 0 {
+		complete := 0
+		for len(os) > complete {
 			for i, o := range(os) {
+				if o == nil {
+					continue
+				}
 				nxt := <- o
 				if nxt != nil {
 					c <- nxt
 				} else {
-					if i+1 >= len(os) {
-						os = os[:i]
-					} else {
-						os = append(os[:i], os[i+1:]...)
-					}
+					close(o)
+					os[i] = nil
+					complete++
 				}
 			}
 		}
@@ -94,7 +97,7 @@ func Take(n int, seq <-chan interface{}) chan interface{} {
 	v := <-seq
 	go func() {
 		i := 0
-		for i < n {
+		for i < n && v != nil {
 			c <- v
 			v = <-seq
 			i++
@@ -108,11 +111,27 @@ func TakeWhile(seq <-chan interface{}, pred func(interface{}) bool) chan interfa
 	c := make(chan interface{})
 	v := <-seq
 	go func() {
-		for pred(v) {
+		for v != nil && pred(v) {
 			c <- v
 			v = <-seq
 		}
 		c <- nil
 	}()
 	return c
+}
+
+func Fork(seq <-chan interface{}) (a chan interface{}, b chan interface{}) {
+	a = make(chan interface{})
+	b = make(chan interface{})
+	go func() {
+		v := <-seq
+		for v != nil {
+			a <- v
+			b <- v
+			v = <-seq
+		}
+		a <- nil
+		b <- nil
+	}()
+	return
 }
