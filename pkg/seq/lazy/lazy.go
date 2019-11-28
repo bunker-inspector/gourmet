@@ -1,5 +1,11 @@
 package lazy
 
+import (
+	"container/list"
+	"sync"
+	"fmt"
+)
+
 func Seq(o ...interface{}) chan interface{} {
 	c := make(chan interface{})
 	go func(){
@@ -123,15 +129,65 @@ func TakeWhile(seq <-chan interface{}, pred func(interface{}) bool) chan interfa
 func Fork(seq <-chan interface{}) (a chan interface{}, b chan interface{}) {
 	a = make(chan interface{})
 	b = make(chan interface{})
+
 	go func() {
+		aBuffer := list.New()
+		bBuffer := list.New()
+
+		aBufferN := make(chan bool)
+		bBufferN := make(chan bool)
+
+		notify := func(c chan bool) {c<-true}
+
+		amut := &sync.Mutex{}
+		bmut := &sync.Mutex{}
+
+		processBuffer := func(buffer *list.List, output chan interface{}, n chan bool, m *sync.Mutex) {
+			for true {
+				//sleep until there's work to do
+				<-n
+
+				m.Lock()
+				v := buffer.Front()
+				fmt.Println(v)
+				buffer.Remove(v)
+				m.Unlock()
+				output <- v.Value
+
+				//are we done?
+				if v.Value == nil {
+					return
+				}
+			}
+		}
+
+		go processBuffer(aBuffer, a, aBufferN, amut)
+		go processBuffer(bBuffer, b, bBufferN, bmut)
+
 		v := <-seq
-		for v != nil {
-			a <- v
-			b <- v
+		if v != nil {
+			fmt.Println(v)
+			amut.Lock()
+			aBuffer.PushBack(v)
+			amut.Unlock()
+			go notify(aBufferN)
+
+			bmut.Lock()
+			bBuffer.PushBack(v)
+			bmut.Unlock()
+			go notify(bBufferN)
+
 			v = <-seq
 		}
-		a <- nil
-		b <- nil
+		amut.Lock()
+		aBuffer.PushBack(nil)
+		amut.Unlock()
+		go notify(aBufferN)
+
+		bmut.Lock()
+		bBuffer.PushBack(nil)
+		bmut.Unlock()
+		go notify(bBufferN)
 	}()
 	return
 }
