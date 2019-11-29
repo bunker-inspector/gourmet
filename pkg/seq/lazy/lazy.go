@@ -30,6 +30,37 @@ func Map(fn func(interface{})interface{}, seq chan interface{}) chan interface{}
 	return c
 }
 
+func Each(fn func(interface{}), seq chan interface{}) chan interface{} {
+	c := make(chan interface{})
+	go func(){
+		v := <-seq
+		for v != nil {
+			fn(v)
+			v = <-seq
+		}
+		c <- nil
+		close(seq)
+	}()
+	return c
+}
+
+func Reduce(reducer func(interface{}, interface{})interface{},
+	agg interface{},
+	seq chan interface{}) chan interface{} {
+	c := make(chan interface{})
+	go func(){
+		v := <-seq
+		for v != nil {
+			agg = reducer(v, agg)
+			c <- agg
+			v = <-seq
+		}
+		c <- nil
+		close(seq)
+	}()
+	return c
+}
+
 func Filter(pred func(interface{})bool, seq chan interface{}) chan interface{} {
 	c := make(chan interface{})
 	go func(){

@@ -56,6 +56,31 @@ func TestMap(t *testing.T) {
 	}
 }
 
+func TestReduce(t *testing.T) {
+	reducer := func(v interface{}, sum interface{}) interface{}{
+		return v.(int) + sum.(int)
+	}
+	s := eager.Collect(Reduce(reducer, 0, Seq(1,2,3)))
+	sum := s[len(s)-1]
+	if sum != 6 {
+		t.Fatalf("Reduce failed: Expected %d, got %d", 6, s[len(s)-1])
+	}
+}
+
+func TestEach(t *testing.T) {
+	s := Seq(1,2,3)
+	r := []int{}
+	e := func(i interface{}) {
+		r = append(r, i.(int))
+	}
+	<-Each(e, s)
+	for i, v := range([]int{1,2,3}) {
+		if v != r[i] {
+			t.Fatalf("Each failed: Expected %d, got %d", v, r[i])
+		}
+	}
+}
+
 func isEven(i interface{}) bool {
 	return i.(int) % 2 == 0
 }
