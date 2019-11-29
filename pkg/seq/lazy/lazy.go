@@ -3,7 +3,6 @@ package lazy
 import (
 	"container/list"
 	"sync"
-	"fmt"
 )
 
 func Seq(o ...interface{}) chan interface{} {
@@ -149,7 +148,6 @@ func Fork(seq <-chan interface{}) (a chan interface{}, b chan interface{}) {
 
 				m.Lock()
 				v := buffer.Front()
-				fmt.Println(v)
 				buffer.Remove(v)
 				m.Unlock()
 				output <- v.Value
@@ -165,8 +163,7 @@ func Fork(seq <-chan interface{}) (a chan interface{}, b chan interface{}) {
 		go processBuffer(bBuffer, b, bBufferN, bmut)
 
 		v := <-seq
-		if v != nil {
-			fmt.Println(v)
+		for v != nil {
 			amut.Lock()
 			aBuffer.PushBack(v)
 			amut.Unlock()

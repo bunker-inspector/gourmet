@@ -1,7 +1,6 @@
 package lazy
 
 import (
-	"fmt"
 	"testing"
 	"github.com/tedgkassen/gourmet/pkg/seq/eager"
 )
@@ -60,18 +59,14 @@ func TestZip(t *testing.T) {
 func TestFork(t *testing.T) {
 	s := Seq(2,3,4,5)
 	a, b := Fork(s)
-	fmt.Println(eager.Collect(a))
-	fmt.Println(eager.Collect(b))
-	//ar := eager.Collect(Map(inc, a))
-	//br := eager.Collect(Map(dec, b))
-	//fmt.Println(ar)
-	//fmt.Println(br)
-	//for i, v := range([]int{2,3,4,5}) {
-	//	if v+1 != ar[i] {
-	//		t.Fatalf("Fork (possibly) failed: Expected %d from ar, got %d", v+1, ar[i])
-	//	}
-	//	if v-1 != br[i] {
-	//		t.Fatalf("Fork (possibly) failed: Expected %d from br, got %d", v-1, br[i])
-	//	}
-	//}
+	ar := eager.Collect(Map(inc, a))
+	br := eager.Collect(Map(dec, b))
+	for i, v := range([]int{2,3,4,5}) {
+		if v+1 != ar[i] {
+			t.Fatalf("Fork (possibly) failed: Expected %d from ar, got %d", v+1, ar[i])
+		}
+		if v-1 != br[i] {
+			t.Fatalf("Fork (possibly) failed: Expected %d from br, got %d", v-1, br[i])
+		}
+	}
 }
