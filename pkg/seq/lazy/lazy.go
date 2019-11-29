@@ -46,10 +46,6 @@ func Filter(pred func(interface{})bool, seq chan interface{}) chan interface{} {
 	return c
 }
 
-func Reverse(o <-chan interface{}) {
-	panic("Oh god oh god oh shit oh god")
-}
-
 func Zip(os ...chan interface{}) chan interface{} {
 	c := make(chan interface{})
 	go func() {
@@ -97,22 +93,45 @@ func Iterate(v interface{}, fn func(interface{}) interface{}) chan interface{} {
 	return c
 }
 
-func Take(n int, seq <-chan interface{}) chan interface{} {
+func Take(n int, seq chan interface{}) chan interface{} {
 	c := make(chan interface{})
 	v := <-seq
 	go func() {
 		i := 0
-		for i < n && v != nil {
+		for i < n {
 			c <- v
 			v = <-seq
 			i++
+			if v == nil {
+				close(seq)
+				break
+			}
 		}
 		c <- nil
 	}()
 	return c
 }
 
-func TakeWhile(seq <-chan interface{}, pred func(interface{}) bool) chan interface{} {
+func TakeEvery(n int, seq chan interface{}) chan interface{} {
+	c := make(chan interface{})
+	v := <-seq
+	go func() {
+		for v != nil {
+			c <- v
+			for j := 0; j < n && v != nil; j++ {
+				v = <-seq
+			}
+			if v == nil {
+				close(seq)
+				break
+			}
+		}
+		c <- nil
+	}()
+	return c
+}
+
+func TakeWhile(seq chan interface{}, pred func(interface{}) bool) chan interface{} {
 	c := make(chan interface{})
 	v := <-seq
 	go func() {
@@ -121,6 +140,7 @@ func TakeWhile(seq <-chan interface{}, pred func(interface{}) bool) chan interfa
 			v = <-seq
 		}
 		c <- nil
+		close(seq)
 	}()
 	return c
 }
