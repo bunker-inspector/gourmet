@@ -21,7 +21,7 @@ e := func(i interface{}) {
 	r = append(r, i.(int))
 }
 <-Each(e, s)
- //r: [1, 2, 3]
+ //r: [1,2,3]
 ```
 
 ##### Zip
