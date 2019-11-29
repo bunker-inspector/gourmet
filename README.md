@@ -1,4 +1,5 @@
-Gourmet is an Elixir standard library inspired collection of high level functions for stream processing using channels to model lazy sequences
+## Gourmet
+An Elixir standard library inspired collection of high level functions for stream processing using channels to model lazy sequences
 
 #### A few examples
 
