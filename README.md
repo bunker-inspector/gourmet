@@ -1,5 +1,5 @@
 ## Gourmet
-An Elixir standard library inspired collection of high level functions for stream processing using channels to model lazy sequences
+A collection of high level functions for stream processing using channels to model lazy sequences inspire by the Elixir standard standard library
 
 #### A few examples
 
@@ -24,10 +24,10 @@ e := func(i interface{}) {
  //r: [1,2,3]
 ```
 
-##### Zip
+##### Interleave
 ```go
 a := Seq(1,3,5)
 b := Seq(2,4,6)
-c := eager.Collect(Zip(a,b))
+c := eager.Collect(Interleave(a,b))
 //c: [1,2,3,4,5,6]
 ```

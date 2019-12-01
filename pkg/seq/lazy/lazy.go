@@ -92,7 +92,7 @@ func Filter(pred func(interface{})bool, in chan interface{}) chan interface{} {
 	return consume(f, in)
 }
 
-func Zip(ins ...chan interface{}) chan interface{} {
+func Interleave(ins ...chan interface{}) chan interface{} {
 	z := func(out chan interface{}) {
 		complete := 0
 		for len(ins) > complete {

@@ -108,13 +108,13 @@ func TestFilter(t *testing.T) {
 	}
 }
 
-func TestZip(t *testing.T) {
+func TestInterleave(t *testing.T) {
 	a := Seq(1,3,5)
 	b := Seq(2,4,6)
-	c := eager.Collect(Zip(a,b))
+	c := eager.Collect(Interleave(a,b))
 	for i, v := range([]int{1,2,3,4,5,6}) {
 		if v != c[i] {
-			t.Fatalf("Zip failed: Expected %d, got %d", v, c[i])
+			t.Fatalf("Interleave failed: Expected %d, got %d", v, c[i])
 		}
 	}
 }
