@@ -5,175 +5,184 @@ import (
 	"sync"
 )
 
-func Seq(o ...interface{}) chan interface{} {
-	c := make(chan interface{})
-	go func(){
-		for _, v := range(o) {
-			c <- v
-		}
-		c <- nil
-	}()
-	return c
+func stream(processor func(out chan interface{})) chan interface{} {
+	out := make(chan interface{})
+	go processor(out)
+	return out
 }
 
-func Map(fn func(interface{})interface{}, seq chan interface{}) chan interface{} {
-	c := make(chan interface{})
-	go func(){
-		v := <-seq
+func consume(processor func(out chan interface{}), in chan interface{}) chan interface{} {
+	p := func(out chan interface{}) {
+		processor(out)
+		out <- nil
+		close(in)
+	}
+	return stream(p)
+}
+
+func Seq(in ...interface{}) chan interface{} {
+	s := func(out chan interface{}) {
+		for _, v := range(in) {
+			out <- v
+		}
+		out <- nil
+	}
+	return stream(s)
+}
+
+func Map(fn func(interface{})interface{}, in chan interface{}) chan interface{} {
+	m := func(out chan interface{}) {
+		v := <-in
 		for v != nil {
-			c <- fn(v)
-			v = <-seq
+			out <- fn(v)
+			v = <-in
 		}
-		c <- nil
-		close(seq)
-	}()
-	return c
+	}
+	return consume(m, in)
 }
 
-func Each(fn func(interface{}), seq chan interface{}) chan interface{} {
-	c := make(chan interface{})
-	go func(){
-		v := <-seq
+func Each(fn func(interface{}), in chan interface{}) chan interface{} {
+	e := func(_ chan interface{}) {
+		v := <-in
 		for v != nil {
 			fn(v)
-			v = <-seq
+			v = <-in
 		}
-		c <- nil
-		close(seq)
-	}()
-	return c
+	}
+	return consume(e, in)
 }
+
+func Tap(fn func(interface{}), in chan interface{}) chan interface{} {
+	t := func(out chan interface{}) {
+		v := <-in
+		for v != nil {
+			fn(v)
+			out <- v
+			v = <-in
+		}
+	}
+	return consume(t, in)
+}
+
 
 func Reduce(reducer func(interface{}, interface{})interface{},
 	agg interface{},
-	seq chan interface{}) chan interface{} {
-	c := make(chan interface{})
-	go func(){
-		v := <-seq
+	in chan interface{}) chan interface{} {
+	r := func(out chan interface{}) {
+		v := <-in
 		for v != nil {
 			agg = reducer(v, agg)
-			c <- agg
-			v = <-seq
+			out <- agg
+			v = <-in
 		}
-		c <- nil
-		close(seq)
-	}()
-	return c
+	}
+	return consume(r, in)
 }
 
-func Filter(pred func(interface{})bool, seq chan interface{}) chan interface{} {
-	c := make(chan interface{})
-	go func(){
-		v := <-seq
+func Filter(pred func(interface{})bool, in chan interface{}) chan interface{} {
+	f := func(out chan interface{}) {
+		v := <-in
 		for v != nil {
 			if pred(v) {
-				c <- v
+				out <- v
 			}
-			v = <-seq
+			v = <-in
 		}
-		c <- nil
-		close(seq)
-	}()
-	return c
+	}
+	return consume(f, in)
 }
 
-func Zip(os ...chan interface{}) chan interface{} {
-	c := make(chan interface{})
-	go func() {
+func Zip(ins ...chan interface{}) chan interface{} {
+	z := func(out chan interface{}) {
 		complete := 0
-		for len(os) > complete {
-			for i, o := range(os) {
-				if o == nil {
+		for len(ins) > complete {
+			for i, currIn := range(ins) {
+				if currIn == nil {
 					continue
 				}
-				nxt := <- o
+				nxt := <- currIn
 				if nxt != nil {
-					c <- nxt
+					out <- nxt
 				} else {
-					close(o)
-					os[i] = nil
+					close(currIn)
+					ins[i] = nil
 					complete++
 				}
 			}
 		}
-		c <- nil
-	}()
-	return c
+		out <- nil
+	}
+	return stream(z)
 }
 
-func Cycle(o ...interface{}) chan interface{} {
-	c := make(chan interface{})
-	go func(){
+func Cycle(in ...interface{}) chan interface{} {
+	c := func(out chan interface{}){
 		for true {
-			for _, v := range(o) {
-				c <- v
+			for _, v := range(in) {
+				out <- v
 			}
 		}
-	}()
-	return c
+	}
+	return stream(c)
 }
 
 func Iterate(v interface{}, fn func(interface{}) interface{}) chan interface{} {
-	c := make(chan interface{})
-	go func() {
+	i := func(out chan interface{}) {
 		for true {
-			c <- v
+			out <- v
 			v = fn(v)
 		}
-	}()
-	return c
+	}
+	return stream(i)
 }
 
-func Take(n int, seq chan interface{}) chan interface{} {
-	c := make(chan interface{})
-	v := <-seq
-	go func() {
+func Take(n int, in chan interface{}) chan interface{} {
+	t := func(out chan interface{}) {
 		i := 0
 		for i < n {
-			c <- v
-			v = <-seq
+			v := <-in
+			out <- v
 			i++
 			if v == nil {
-				close(seq)
+				close(in)
 				break
 			}
 		}
-		c <- nil
-	}()
-	return c
+		out <- nil
+	}
+	return stream(t)
 }
 
-func TakeEvery(n int, seq chan interface{}) chan interface{} {
-	c := make(chan interface{})
-	v := <-seq
-	go func() {
+func TakeEvery(n int, in chan interface{}) chan interface{} {
+	t := func(out chan interface{}) {
+		v := <-in
 		for v != nil {
-			c <- v
+			out <- v
 			for j := 0; j < n && v != nil; j++ {
-				v = <-seq
-			}
-			if v == nil {
-				close(seq)
-				break
+				v = <-in
 			}
 		}
-		c <- nil
-	}()
-	return c
+		if v == nil {
+			close(in)
+		}
+		out <- nil
+	}
+	return stream(t)
 }
 
-func TakeWhile(seq chan interface{}, pred func(interface{}) bool) chan interface{} {
-	c := make(chan interface{})
-	v := <-seq
-	go func() {
+func TakeWhile(in chan interface{}, pred func(interface{}) bool) chan interface{} {
+	t := func(out chan interface{}) {
+		v := <-in
 		for v != nil && pred(v) {
-			c <- v
-			v = <-seq
+			out <- v
+			v = <-in
 		}
-		c <- nil
-		close(seq)
-	}()
-	return c
+		if v == nil {
+			close(in)
+		}
+		out <- nil
+	}
+	return stream(t)
 }
 
 func Fork(seq <-chan interface{}) (a chan interface{}, b chan interface{}) {

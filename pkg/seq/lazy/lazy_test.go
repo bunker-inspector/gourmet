@@ -25,6 +25,12 @@ func TestCycle(t *testing.T) {
 	}
 }
 
+func lessThan(n int) func(interface{})bool {
+	return func(i interface{}) bool {
+		return i.(int) < n
+	}
+}
+
 func TestTake(t *testing.T) {
 	s := Cycle([]interface{}{1,2,3}...)
 	d := TakeEvery(2, s)
@@ -32,6 +38,13 @@ func TestTake(t *testing.T) {
 	for i, v := range([]int{1,3,2}) {
 		if v != f[i] {
 			t.Fatalf("Take failed: Expected %d, got %d", v, f[i])
+		}
+	}
+	s = Seq(1,2,3,4,5)
+	e := eager.Collect(TakeWhile(s, lessThan(4)))
+	for i, v := range([]int{1,2,3}) {
+		if v != e[i] {
+			t.Fatalf("TakeWhile failed: Expected %d, got %d", v, e[i])
 		}
 	}
 }
