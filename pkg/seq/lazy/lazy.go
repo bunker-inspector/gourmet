@@ -185,16 +185,18 @@ func TakeWhile(in chan interface{}, pred func(interface{}) bool) chan interface{
 	return stream(t)
 }
 
-func Fork(seq <-chan interface{}) (a chan interface{}, b chan interface{}) {
+func Fork(in <-chan interface{}) (a chan interface{}, b chan interface{}) {
 	a = make(chan interface{})
 	b = make(chan interface{})
 
 	go func() {
-		aBuffer := list.New()
-		bBuffer := list.New()
+		//buffer
+		abuf := list.New()
+		bbuf := list.New()
 
-		aBufferN := make(chan bool)
-		bBufferN := make(chan bool)
+		//notifiers
+		abufn := make(chan bool)
+		bbufn := make(chan bool)
 
 		notify := func(c chan bool) {c<-true}
 
@@ -219,32 +221,32 @@ func Fork(seq <-chan interface{}) (a chan interface{}, b chan interface{}) {
 			}
 		}
 
-		go processBuffer(aBuffer, a, aBufferN, amut)
-		go processBuffer(bBuffer, b, bBufferN, bmut)
+		go processBuffer(abuf, a, abufn, amut)
+		go processBuffer(bbuf, b, bbufn, bmut)
 
-		v := <-seq
+		v := <-in
 		for v != nil {
 			amut.Lock()
-			aBuffer.PushBack(v)
+			abuf.PushBack(v)
 			amut.Unlock()
-			go notify(aBufferN)
+			go notify(abufn)
 
 			bmut.Lock()
-			bBuffer.PushBack(v)
+			bbuf.PushBack(v)
 			bmut.Unlock()
-			go notify(bBufferN)
+			go notify(bbufn)
 
-			v = <-seq
+			v = <-in
 		}
 		amut.Lock()
-		aBuffer.PushBack(nil)
+		abuf.PushBack(nil)
 		amut.Unlock()
-		go notify(aBufferN)
+		go notify(abufn)
 
 		bmut.Lock()
-		bBuffer.PushBack(nil)
+		bbuf.PushBack(nil)
 		bmut.Unlock()
-		go notify(bBufferN)
+		go notify(bbufn)
 	}()
 	return
 }
