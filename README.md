@@ -1,5 +1,5 @@
 ## Gourmet
-A collection of high level functions for stream processing using channels to model laziness inspired by the Elixir standard standard library
+A collection of high level functions for stream processing using channels to model laziness
 
 #### A few examples
 
