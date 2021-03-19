@@ -22,7 +22,7 @@ func consume(processor func(out chan interface{}), in chan interface{}) chan int
 
 func Seq(in ...interface{}) chan interface{} {
 	s := func(out chan interface{}) {
-		for _, v := range(in) {
+		for _, v := range in {
 			out <- v
 		}
 		out <- nil
@@ -30,7 +30,7 @@ func Seq(in ...interface{}) chan interface{} {
 	return stream(s)
 }
 
-func Map(fn func(interface{})interface{}, in chan interface{}) chan interface{} {
+func Map(fn func(interface{}) interface{}, in chan interface{}) chan interface{} {
 	m := func(out chan interface{}) {
 		v := <-in
 		for v != nil {
@@ -64,8 +64,7 @@ func Tap(fn func(interface{}), in chan interface{}) chan interface{} {
 	return consume(t, in)
 }
 
-
-func Reduce(reducer func(interface{}, interface{})interface{},
+func Reduce(reducer func(interface{}, interface{}) interface{},
 	agg interface{},
 	in chan interface{}) chan interface{} {
 	r := func(out chan interface{}) {
@@ -79,7 +78,7 @@ func Reduce(reducer func(interface{}, interface{})interface{},
 	return consume(r, in)
 }
 
-func Filter(pred func(interface{})bool, in chan interface{}) chan interface{} {
+func Filter(pred func(interface{}) bool, in chan interface{}) chan interface{} {
 	f := func(out chan interface{}) {
 		v := <-in
 		for v != nil {
@@ -96,11 +95,11 @@ func Interleave(ins ...chan interface{}) chan interface{} {
 	z := func(out chan interface{}) {
 		complete := 0
 		for len(ins) > complete {
-			for i, currIn := range(ins) {
+			for i, currIn := range ins {
 				if currIn == nil {
 					continue
 				}
-				nxt := <- currIn
+				nxt := <-currIn
 				if nxt != nil {
 					out <- nxt
 				} else {
@@ -116,9 +115,9 @@ func Interleave(ins ...chan interface{}) chan interface{} {
 }
 
 func Cycle(in ...interface{}) chan interface{} {
-	c := func(out chan interface{}){
+	c := func(out chan interface{}) {
 		for true {
-			for _, v := range(in) {
+			for _, v := range in {
 				out <- v
 			}
 		}
@@ -198,13 +197,13 @@ func Fork(in <-chan interface{}) (a chan interface{}, b chan interface{}) {
 		abufn := make(chan bool)
 		bbufn := make(chan bool)
 
-		notify := func(c chan bool) {c<-true}
+		notify := func(c chan bool) { c <- true }
 
 		amut := &sync.Mutex{}
 		bmut := &sync.Mutex{}
 
 		processBuffer := func(buffer *list.List, output chan interface{}, n chan bool, m *sync.Mutex) {
-			for true {
+			for {
 				//sleep until there's work to do
 				<-n
 
