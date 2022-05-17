@@ -13,13 +13,6 @@ func stream[T any](processor func(out chan T)) chan T {
 	return out
 }
 
-func consume[T any](processor func(out chan T), in chan T) chan T {
-	f := func(out chan T) {
-		processor(out)
-	}
-	return stream(f)
-}
-
 func Seq[T any](in ...T) chan T {
 	f := func(out chan T) {
 		for _, v := range in {
@@ -29,13 +22,13 @@ func Seq[T any](in ...T) chan T {
 	return stream(f)
 }
 
-func Map[T any](fn func(T) T, in chan T) chan T {
-	f := func(out chan T) {
+func Map[T any, U any](fn func(T) U, in chan T) chan U {
+	f := func(out chan U) {
 		for v := range in {
 			out <- fn(v)
 		}
 	}
-	return consume(f, in)
+	return stream(f)
 }
 
 func Each[T any](fn func(T), in chan T) chan T {
@@ -44,7 +37,7 @@ func Each[T any](fn func(T), in chan T) chan T {
 			fn(v)
 		}
 	}
-	return consume(f, in)
+	return stream(f)
 }
 
 func Tap[T any](fn func(T), in chan T) chan T {
@@ -54,7 +47,7 @@ func Tap[T any](fn func(T), in chan T) chan T {
 			out <- v
 		}
 	}
-	return consume(f, in)
+	return stream(f)
 }
 
 func Reduce[T any](reducer func(T, T) T,
@@ -66,7 +59,7 @@ func Reduce[T any](reducer func(T, T) T,
 			out <- agg
 		}
 	}
-	return consume(f, in)
+	return stream(f)
 }
 
 func Filter[T any](pred func(T) bool, in chan T) chan T {
@@ -77,7 +70,7 @@ func Filter[T any](pred func(T) bool, in chan T) chan T {
 			}
 		}
 	}
-	return consume(f, in)
+	return stream(f)
 }
 
 func Interleave[T any](ins ...chan T) chan T {

@@ -2,6 +2,7 @@ package gourmet
 
 import (
 	"testing"
+	"strconv"
 )
 
 func inc (i int) int {
@@ -77,6 +78,15 @@ func TestMap(t *testing.T) {
 	for i, v := range([]int{2,3,4,5}) {
 		if v != s[i] {
 			t.Fatalf("Map failed: Expected %d, got %d", v, s[i])
+		}
+	}
+}
+
+func TestMapConverts(t *testing.T) {
+	s := Collect(Map(strconv.Itoa, Seq(1,2,3,4)))
+	for i, v := range([]string{"1","2","3","4"}) {
+		if v != s[i] {
+			t.Fatalf("Map failed: Expected %s, got %s", v, s[i])
 		}
 	}
 }
